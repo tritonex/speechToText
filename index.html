@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voice Search</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      .recording {
+        background-color: red !important;
+        animation: pulse 1s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+      function VoiceSearch() {
+        const [text, setText] = React.useState("");
+        const [isRecording, setIsRecording] = React.useState(false);
+
+        const startListening = async () => {
+          try {
+            // Erst Berechtigung anfordern
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            const recognition = new window.webkitSpeechRecognition();
+            recognition.lang = "de-DE";
+
+            recognition.onstart = () => {
+              setIsRecording(true);
+              console.log("Aufnahme gestartet");
+            };
+
+            recognition.onend = () => {
+              setIsRecording(false);
+              console.log("Aufnahme beendet");
+            };
+
+            recognition.onresult = (event) => {
+              const transcript = event.results[0][0].transcript;
+              setText(transcript);
+              console.log("Erkannter Text:", transcript);
+            };
+
+            recognition.start();
+          } catch (error) {
+            console.error("Fehler:", error);
+            alert("Mikrofon-Zugriff erforderlich");
+          }
+        };
+
+        return (
+          <div style={{ padding: "20px" }}>
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              style={{ width: "300px", padding: "10px" }}
+            />
+            <button
+              onClick={startListening}
+              className={isRecording ? "recording" : ""}
+              style={{
+                padding: "10px 20px",
+                marginLeft: "10px",
+                cursor: "pointer",
+              }}
+            >
+              🎤 {isRecording ? "Aufnahme..." : "Start"}
+            </button>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(
+        <VoiceSearch />
+      );
+    </script>
+  </body>
+</html>

@@ -36,22 +36,28 @@
         const [isRecording, setIsRecording] = React.useState(false);
         const recognitionRef = React.useRef(null);
 
-        const stopListening = () => {
-          if (recognitionRef.current) {
-            recognitionRef.current.stop();
-            setIsRecording(false);
-          }
-        };
+        const isSafariIOS = /iP(ad|hone|od).+Version\/[\d\.]+.*Safari/.test(
+          navigator.userAgent
+        );
 
         const startListening = async () => {
           try {
-            // Wenn bereits aufgenommen wird, stoppen
             if (isRecording) {
-              stopListening();
+              if (recognitionRef.current) {
+                recognitionRef.current.stop();
+              }
+              setIsRecording(false);
               return;
             }
 
-            // Mikrofon-Zugriff anfordern
+            // iOS Safari spezifische Behandlung
+            if (isSafariIOS) {
+              alert(
+                "Spracherkennung wird auf diesem Gerät leider nicht unterstützt. Bitte nutzen Sie die Spracheingabe-Taste Ihrer Tastatur."
+              );
+              return;
+            }
+
             await navigator.mediaDevices.getUserMedia({ audio: true });
 
             recognitionRef.current = new window.webkitSpeechRecognition();
@@ -63,8 +69,6 @@
             recognition.onstart = () => {
               setIsRecording(true);
               console.log("Aufnahme gestartet");
-              // Automatisches Stoppen nach 10 Sekunden
-              setTimeout(stopListening, 10000);
             };
 
             recognition.onend = () => {
@@ -76,38 +80,37 @@
               const transcript = event.results[0][0].transcript;
               setText(transcript);
               console.log("Erkannter Text:", transcript);
-              stopListening();
+              recognition.stop();
             };
 
             recognition.onerror = (event) => {
               console.error("Fehler:", event.error);
-              stopListening();
+              setIsRecording(false);
             };
 
             recognition.start();
           } catch (error) {
             console.error("Fehler:", error);
-            alert(
-              "Mikrofon-Zugriff erforderlich. Bitte erlauben Sie den Zugriff in Ihren Browser-Einstellungen."
-            );
+            if (isSafariIOS) {
+              alert(
+                "Bitte nutzen Sie die Spracheingabe-Taste Ihrer iOS-Tastatur."
+              );
+            } else {
+              alert(
+                "Mikrofon-Zugriff erforderlich. Bitte erlauben Sie den Zugriff in Ihren Browser-Einstellungen."
+              );
+            }
             setIsRecording(false);
           }
         };
-
-        // Aufräumen beim Unmount
-        React.useEffect(() => {
-          return () => {
-            if (recognitionRef.current) {
-              recognitionRef.current.stop();
-            }
-          };
-        }, []);
 
         return (
           <div style={{ padding: "20px" }}>
             <h1 style={{ marginBottom: "20px" }}>Sprachsuche</h1>
             <div style={{ marginBottom: "10px" }}>
-              {isRecording
+              {isSafariIOS
+                ? "Bitte nutzen Sie die 🎤-Taste Ihrer iOS-Tastatur"
+                : isRecording
                 ? "Sprechen Sie jetzt..."
                 : "Klicken Sie auf das Mikrofon zum Starten"}
             </div>
@@ -121,22 +124,28 @@
                 padding: "10px",
                 marginBottom: "10px",
               }}
-              placeholder="Ihr Text erscheint hier..."
+              placeholder={
+                isSafariIOS
+                  ? "Tippen für iOS-Tastatur mit 🎤"
+                  : "Ihr Text erscheint hier..."
+              }
             />
-            <button
-              onClick={startListening}
-              className={isRecording ? "recording" : ""}
-              style={{
-                padding: "10px 20px",
-                marginLeft: "10px",
-                cursor: "pointer",
-                border: "1px solid #ccc",
-                borderRadius: "5px",
-                background: "#fff",
-              }}
-            >
-              🎤 {isRecording ? "Stop" : "Start"}
-            </button>
+            {!isSafariIOS && (
+              <button
+                onClick={startListening}
+                className={isRecording ? "recording" : ""}
+                style={{
+                  padding: "10px 20px",
+                  marginLeft: "10px",
+                  cursor: "pointer",
+                  border: "1px solid #ccc",
+                  borderRadius: "5px",
+                  background: "#fff",
+                }}
+              >
+                🎤 {isRecording ? "Stop" : "Start"}
+              </button>
+            )}
           </div>
         );
       }

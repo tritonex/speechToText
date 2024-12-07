@@ -23,6 +23,9 @@
           opacity: 1;
         }
       }
+      button {
+        -webkit-tap-highlight-color: transparent;
+      }
     </style>
   </head>
   <body>
@@ -31,18 +34,37 @@
       function VoiceSearch() {
         const [text, setText] = React.useState("");
         const [isRecording, setIsRecording] = React.useState(false);
+        const recognitionRef = React.useRef(null);
+
+        const stopListening = () => {
+          if (recognitionRef.current) {
+            recognitionRef.current.stop();
+            setIsRecording(false);
+          }
+        };
 
         const startListening = async () => {
           try {
-            // Erst Berechtigung anfordern
+            // Wenn bereits aufgenommen wird, stoppen
+            if (isRecording) {
+              stopListening();
+              return;
+            }
+
+            // Mikrofon-Zugriff anfordern
             await navigator.mediaDevices.getUserMedia({ audio: true });
 
-            const recognition = new window.webkitSpeechRecognition();
+            recognitionRef.current = new window.webkitSpeechRecognition();
+            const recognition = recognitionRef.current;
             recognition.lang = "de-DE";
+            recognition.continuous = false;
+            recognition.interimResults = false;
 
             recognition.onstart = () => {
               setIsRecording(true);
               console.log("Aufnahme gestartet");
+              // Automatisches Stoppen nach 10 Sekunden
+              setTimeout(stopListening, 10000);
             };
 
             recognition.onend = () => {
@@ -54,22 +76,52 @@
               const transcript = event.results[0][0].transcript;
               setText(transcript);
               console.log("Erkannter Text:", transcript);
+              stopListening();
+            };
+
+            recognition.onerror = (event) => {
+              console.error("Fehler:", event.error);
+              stopListening();
             };
 
             recognition.start();
           } catch (error) {
             console.error("Fehler:", error);
-            alert("Mikrofon-Zugriff erforderlich");
+            alert(
+              "Mikrofon-Zugriff erforderlich. Bitte erlauben Sie den Zugriff in Ihren Browser-Einstellungen."
+            );
+            setIsRecording(false);
           }
         };
 
+        // Aufräumen beim Unmount
+        React.useEffect(() => {
+          return () => {
+            if (recognitionRef.current) {
+              recognitionRef.current.stop();
+            }
+          };
+        }, []);
+
         return (
           <div style={{ padding: "20px" }}>
+            <h1 style={{ marginBottom: "20px" }}>Sprachsuche</h1>
+            <div style={{ marginBottom: "10px" }}>
+              {isRecording
+                ? "Sprechen Sie jetzt..."
+                : "Klicken Sie auf das Mikrofon zum Starten"}
+            </div>
             <input
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              style={{ width: "300px", padding: "10px" }}
+              style={{
+                width: "100%",
+                maxWidth: "300px",
+                padding: "10px",
+                marginBottom: "10px",
+              }}
+              placeholder="Ihr Text erscheint hier..."
             />
             <button
               onClick={startListening}
@@ -78,9 +130,12 @@
                 padding: "10px 20px",
                 marginLeft: "10px",
                 cursor: "pointer",
+                border: "1px solid #ccc",
+                borderRadius: "5px",
+                background: "#fff",
               }}
             >
-              🎤 {isRecording ? "Aufnahme..." : "Start"}
+              🎤 {isRecording ? "Stop" : "Start"}
             </button>
           </div>
         );

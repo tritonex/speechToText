@@ -35,6 +35,7 @@
         const [text, setText] = React.useState("");
         const [isRecording, setIsRecording] = React.useState(false);
         const recognitionRef = React.useRef(null);
+        const inputRef = React.useRef(null);
 
         const isSafariIOS = /iP(ad|hone|od).+Version\/[\d\.]+.*Safari/.test(
           navigator.userAgent
@@ -50,10 +51,9 @@
               return;
             }
 
-            // iOS Safari spezifische Behandlung
             if (isSafariIOS) {
               alert(
-                "Spracherkennung wird auf diesem Gerät leider nicht unterstützt. Bitte nutzen Sie die Spracheingabe-Taste Ihrer Tastatur."
+                "Bitte nutzen Sie die Spracheingabe-Taste Ihrer iOS-Tastatur."
               );
               return;
             }
@@ -74,6 +74,10 @@
             recognition.onend = () => {
               setIsRecording(false);
               console.log("Aufnahme beendet");
+              // Tastatur ausblenden
+              if (inputRef.current) {
+                inputRef.current.blur();
+              }
             };
 
             recognition.onresult = (event) => {
@@ -86,6 +90,9 @@
             recognition.onerror = (event) => {
               console.error("Fehler:", event.error);
               setIsRecording(false);
+              if (inputRef.current) {
+                inputRef.current.blur();
+              }
             };
 
             recognition.start();
@@ -104,6 +111,17 @@
           }
         };
 
+        // Callback für die iOS-Diktierfunktion
+        const handleInput = (e) => {
+          setText(e.target.value);
+          // Kurze Verzögerung, damit der Text erst erscheint
+          setTimeout(() => {
+            if (inputRef.current) {
+              inputRef.current.blur();
+            }
+          }, 500);
+        };
+
         return (
           <div style={{ padding: "20px" }}>
             <h1 style={{ marginBottom: "20px" }}>Sprachsuche</h1>
@@ -115,9 +133,10 @@
                 : "Klicken Sie auf das Mikrofon zum Starten"}
             </div>
             <input
+              ref={inputRef}
               type="text"
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={handleInput}
               style={{
                 width: "100%",
                 maxWidth: "300px",

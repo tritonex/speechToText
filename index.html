@@ -36,6 +36,7 @@
         const [isRecording, setIsRecording] = React.useState(false);
         const recognitionRef = React.useRef(null);
         const inputRef = React.useRef(null);
+        const timeoutRef = React.useRef(null);
 
         const isSafariIOS = /iP(ad|hone|od).+Version\/[\d\.]+.*Safari/.test(
           navigator.userAgent
@@ -68,13 +69,10 @@
 
             recognition.onstart = () => {
               setIsRecording(true);
-              console.log("Aufnahme gestartet");
             };
 
             recognition.onend = () => {
               setIsRecording(false);
-              console.log("Aufnahme beendet");
-              // Tastatur ausblenden
               if (inputRef.current) {
                 inputRef.current.blur();
               }
@@ -83,7 +81,6 @@
             recognition.onresult = (event) => {
               const transcript = event.results[0][0].transcript;
               setText(transcript);
-              console.log("Erkannter Text:", transcript);
               recognition.stop();
             };
 
@@ -103,23 +100,35 @@
                 "Bitte nutzen Sie die Spracheingabe-Taste Ihrer iOS-Tastatur."
               );
             } else {
-              alert(
-                "Mikrofon-Zugriff erforderlich. Bitte erlauben Sie den Zugriff in Ihren Browser-Einstellungen."
-              );
+              alert("Mikrofon-Zugriff erforderlich.");
             }
             setIsRecording(false);
           }
         };
 
-        // Callback für die iOS-Diktierfunktion
+        // Cleanup für Timer
+        React.useEffect(() => {
+          return () => {
+            if (timeoutRef.current) {
+              clearTimeout(timeoutRef.current);
+            }
+          };
+        }, []);
+
         const handleInput = (e) => {
           setText(e.target.value);
-          // Kurze Verzögerung, damit der Text erst erscheint
-          setTimeout(() => {
+
+          // Vorherigen Timer löschen
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+          }
+
+          // Neuen Timer setzen
+          timeoutRef.current = setTimeout(() => {
             if (inputRef.current) {
               inputRef.current.blur();
             }
-          }, 500);
+          }, 2000); // 2 Sekunden Verzögerung
         };
 
         return (
